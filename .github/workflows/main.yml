@@ -1,0 +1,69 @@
+name: Build & Deploy MakeWell - CI/CD
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deployment:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Build Frontend For Main Website
+        run: |
+          cd client
+          cd main-website
+          echo "Installing dependencies..."
+          npm install
+          echo "Building frontend..."
+          npm run build
+
+      - name: Move Main Frontend to Public Directory
+        run: |
+          echo "Moving frontend files to public directory..."
+          sudo cp -r client/main-website/dist/* /var/www/makewell.life/html
+
+      - name: Build Frontend For HCF Website
+        run: |
+          cd client
+          cd hcf
+          echo "Installing dependencies..."
+          npm install
+          echo "Building frontend..."
+          npm run build
+
+      - name: Move HCF Frontend to Public Directory
+        run: |
+          echo "Moving frontend files to public directory..."
+          sudo cp -r client/hcf/dist/* /var/www/hcf.makewell.life
+          
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: /home/developer/makewell/MakeWell-Web/MakeWell-Web/server
+
+      - name: Kill All PM2 Processes
+        run: pm2 stop all
+        working-directory: /home/developer/makewell/MakeWell-Web/MakeWell-Web/server
+
+      - name: Delete All PM2 Processes
+        run: pm2 delete all
+        working-directory: /home/developer/makewell/MakeWell-Web/MakeWell-Web/server
+
+      - name: Start Backend via PM2
+        run: pm2 start ecosystem.config.cjs
+        working-directory: /home/developer/makewell/MakeWell-Web/MakeWell-Web/server
+
+
+      - name: Show NGINX Configuration
+        run: |
+          echo "Displaying NGINX configuration..."
+          cat /etc/nginx/nginx.conf
+
+      - name: Show NGINX Status
+        run: |
+          echo "Checking NGINX status..."
+          systemctl status nginx
